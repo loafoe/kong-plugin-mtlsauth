@@ -52,23 +52,22 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		return
 	}
 	method, _ := kong.Request.GetMethod()
-
-	valid, err := conf.verifier.ValidateRequest(&http.Request{
-		Header: headers,
-		Method: method,
-	})
+	req, _ := http.NewRequest(method, "https://foo", nil)
+	req.Header.Set(signer.HeaderAuthorization, headers[signer.HeaderAuthorization][0])
+	req.Header.Set(signer.HeaderSignedDate, headers[signer.HeaderSignedDate][0])
+	valid, err := conf.verifier.ValidateRequest(req)
 	if err != nil {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("validation failed: %v", err))
 		return
 	}
 	if !valid {
-		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("invalid signature"))
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "invalid signature")
 		return
 	}
 
 	// Authorization
-	mtlData, ok := headers[conf.MTLSHeader]
-	if !ok || len(mtlData) == 0 {
+	mtlsData, ok := headers[conf.MTLSHeader]
+	if !ok || len(mtlsData) == 0 {
 		return
 	}
 	serialData, ok := headers[conf.SerialHeader]
@@ -90,7 +89,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		}
 		body, err := json.Marshal(&mr)
 		if err != nil {
-			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("error marshalling token request"))
+			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "error marshalling token request")
 			return
 		}
 		resp, err := http.Post(conf.DPSEndpoint+"/Mapper", "application/json", bytes.NewBuffer(body))
