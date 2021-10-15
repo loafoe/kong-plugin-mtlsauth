@@ -41,14 +41,14 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	})
 
 	if conf.err != nil {
-		kong.Response.Exit(http.StatusUnauthorized, fmt.Sprintf("verifier failed: %v\n", conf.err), nil)
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("verifier failed: %v", conf.err))
 		return
 	}
 
 	// Signature validation
 	headers, err := kong.Request.GetHeaders(-1)
 	if err != nil {
-		kong.Response.Exit(http.StatusUnauthorized, fmt.Sprintf("getHeaders failed: %v\n", err), nil)
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("getHeaders failed: %v", err))
 		return
 	}
 	method, _ := kong.Request.GetMethod()
@@ -58,29 +58,27 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		Method: method,
 	})
 	if err != nil {
-		kong.Response.Exit(http.StatusUnauthorized, fmt.Sprintf("validation failed: %v\n", err), nil)
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("validation failed: %v", err))
 		return
 	}
 	if !valid {
-		kong.Response.Exit(http.StatusUnauthorized, "invalid signature. blocked\n", headers)
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("invalid signature"))
 		return
 	}
 
 	// Authorization
 	mtlData, ok := headers[conf.MTLSHeader]
 	if !ok || len(mtlData) == 0 {
-		kong.Response.Exit(http.StatusUnauthorized, "missing mTLS data\n", headers)
 		return
 	}
 	serialData, ok := headers[conf.SerialHeader]
 	if !ok || len(serialData) == 0 {
-		kong.Response.Exit(http.StatusUnauthorized, "missing SerialNumber data\n", headers)
 		return
 	}
 	mtlsFields := strings.Split(serialData[0], ",")
 	var cn string
 	if found, _ := fmt.Sscanf(mtlsFields[0], "CN=%s", &cn); found != 1 {
-		kong.Response.Exit(http.StatusUnauthorized, "missing CN field\n", headers)
+		return
 	}
 	serialNumber := serialData[0]
 	key := cn + "|" + serialNumber
@@ -92,18 +90,18 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		}
 		body, err := json.Marshal(&mr)
 		if err != nil {
-			kong.Response.Exit(http.StatusInternalServerError, "error marshalling token request", headers)
+			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("error marshalling token request"))
 			return
 		}
 		resp, err := http.Post(conf.DPSEndpoint+"/Mapper", "application/json", bytes.NewBuffer(body))
 		if err != nil {
-			kong.Response.Exit(http.StatusInternalServerError, "error requesting token\n", headers)
+			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("error requesting token: %v", err))
 			return
 		}
 		var tokenResponse mapperResponse
 		err = json.NewDecoder(resp.Body).Decode(&tokenResponse)
 		if err != nil {
-			kong.Response.Exit(http.StatusInternalServerError, "error decoding token response\n", headers)
+			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("error decoding token response: %v", err))
 			return
 		}
 		defer resp.Body.Close()
