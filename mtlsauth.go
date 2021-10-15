@@ -68,15 +68,18 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	// Authorization
 	mtlsData, ok := headers[conf.MTLSHeader]
 	if !ok || len(mtlsData) == 0 {
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing mtls data")
 		return
 	}
 	serialData, ok := headers[conf.SerialHeader]
 	if !ok || len(serialData) == 0 {
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing serial data")
 		return
 	}
 	mtlsFields := strings.Split(serialData[0], ",")
 	var cn string
 	if found, _ := fmt.Sscanf(mtlsFields[0], "CN=%s", &cn); found != 1 {
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing CN")
 		return
 	}
 	serialNumber := serialData[0]
