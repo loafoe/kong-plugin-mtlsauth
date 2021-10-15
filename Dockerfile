@@ -6,7 +6,7 @@ COPY go.sum .
 RUN go mod download
 # Build
 COPY . .
-RUN go build -o /build/mtlsauth mtlsauth.go
+RUN go build -o /build/mtlsauth
 
 
 FROM kong:2.6.0-alpine
