@@ -49,7 +49,13 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	_ = kong.ServiceRequest.SetHeader("X-Plugin-Working", "true")
 
 	// Signature validation
-	headers, err := kong.Request.GetHeaders(-1)
+	headers, err := kong.Request.GetHeaders(50)
+
+	var keys []string
+	for k := range headers {
+		keys = append(keys, k)
+	}
+
 	if err != nil {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Headers", "failed")
 		return
@@ -61,7 +67,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	if v, ok := headers["signeddate"]; ok && len(v) > 0 {
 		dateH = v[0]
 	} else {
-		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing datesigned header")
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing signeddate header")
 		return
 	}
 	req.Header.Set(signer.HeaderSignedDate, dateH)
@@ -70,7 +76,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	if v, ok := headers["hsdp_api_signature"]; ok && len(v) > 0 {
 		authH = v[0]
 	} else {
-		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing auth header")
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("missing auth header: %s", strings.Join(keys, ",")))
 		return
 	}
 	req.Header.Set(signer.HeaderAuthorization, authH)
