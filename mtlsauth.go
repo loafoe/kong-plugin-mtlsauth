@@ -56,10 +56,24 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	}
 	_ = kong.ServiceRequest.SetHeader("X-Plugin-Headers", "available")
 
-	method, _ := kong.Request.GetMethod()
-	req, _ := http.NewRequest(method, "https://foo", nil)
-	req.Header.Set(signer.HeaderAuthorization, headers[signer.HeaderAuthorization][0])
-	req.Header.Set(signer.HeaderSignedDate, headers[signer.HeaderSignedDate][0])
+	req, _ := http.NewRequest(http.MethodGet, "https://foo", nil)
+	authH := ""
+	if v, ok := headers[signer.HeaderAuthorization]; ok && len(v) > 0 {
+		authH = v[0]
+	} else {
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing auth header")
+		return
+	}
+	req.Header.Set(signer.HeaderAuthorization, authH)
+
+	dateH := ""
+	if v, ok := headers[signer.HeaderSignedDate]; ok && len(v) > 0 {
+		dateH = v[0]
+	} else {
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing datesigned header")
+		return
+	}
+	req.Header.Set(signer.HeaderSignedDate, dateH)
 
 	_ = kong.ServiceRequest.SetHeader("X-Plugin-Validatable", "true")
 
