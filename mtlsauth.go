@@ -111,7 +111,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	_ = kong.ServiceRequest.SetHeader("X-Plugin-Key", key)
 
 	cachedToken, found := conf.cache.Get(key)
-	if !found { // Authorize
+	if !found || cachedToken.(string) == "" { // Authorize
 		var mr = mapperRequest{
 			TPMHash:      cn,
 			DeviceSerial: serialNumber,
@@ -133,10 +133,11 @@ func (conf *Config) Access(kong *pdk.PDK) {
 			return
 		}
 		defer resp.Body.Close()
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Response", fmt.Sprintf("%d", resp.StatusCode))
 
 		cachedToken = tokenResponse.AccessToken
 		conf.cache.Set(key, cachedToken, time.Duration(tokenResponse.ExpiresIn)*time.Minute)
-		_ = kong.ServiceRequest.SetHeader("X-Mapped-Hash", key)
+		_ = kong.ServiceRequest.SetHeader("X-Mapped-Hash", key+"|"+tokenResponse.AccessToken)
 	} else {
 		_ = kong.ServiceRequest.SetHeader("X-Cached-Hash", key)
 	}
