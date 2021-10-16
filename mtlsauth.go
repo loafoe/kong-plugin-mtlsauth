@@ -55,16 +55,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		return
 	}
 	_ = kong.ServiceRequest.SetHeader("X-Plugin-Headers", "available")
-
 	req, _ := http.NewRequest(http.MethodGet, "https://foo", nil)
-	authH := ""
-	if v, ok := headers["hsdp_api_signature"]; ok && len(v) > 0 {
-		authH = v[0]
-	} else {
-		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing auth header")
-		return
-	}
-	req.Header.Set(signer.HeaderAuthorization, authH)
 
 	dateH := ""
 	if v, ok := headers["signeddate"]; ok && len(v) > 0 {
@@ -74,6 +65,15 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		return
 	}
 	req.Header.Set(signer.HeaderSignedDate, dateH)
+
+	authH := ""
+	if v, ok := headers["hsdp_api_signature"]; ok && len(v) > 0 {
+		authH = v[0]
+	} else {
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing auth header")
+		return
+	}
+	req.Header.Set(signer.HeaderAuthorization, authH)
 
 	_ = kong.ServiceRequest.SetHeader("X-Plugin-Validatable", "true")
 
