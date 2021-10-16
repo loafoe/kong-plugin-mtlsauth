@@ -86,7 +86,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		conf.cache.Set(key, tr, time.Duration(newTokenResponse.ExpiresIn-60)*time.Second)
 	}
 	tokenResponse := tr.(mapperResponse)
-	expiresIn := time.Until(tokenResponse.ExpiresAt) * time.Second
+	expiresIn := time.Until(tokenResponse.ExpiresAt) / time.Second
 	_ = kong.ServiceRequest.SetHeader("Authorization", "Bearer "+tokenResponse.AccessToken)
 	_ = kong.ServiceRequest.SetHeader("X-Token-Expires", fmt.Sprintf("%d", expiresIn))
 }
