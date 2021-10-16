@@ -39,14 +39,10 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		conf.verifier, conf.err = signer.New(conf.SharedKey, conf.SecretKey)
 		conf.cache = cache.New(30*time.Minute, 60*time.Minute)
 	})
-	_ = kong.Log.Info("Verifying signature")
-	_ = kong.ServiceRequest.SetHeader("X-Plugin-Active", "true")
-
 	if conf.err != nil {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("verifier failed: %v", conf.err))
 		return
 	}
-	_ = kong.ServiceRequest.SetHeader("X-Plugin-Working", "true")
 
 	// Signature validation
 	headers, err := kong.Request.GetHeaders(50)
@@ -60,7 +56,6 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Headers", "failed")
 		return
 	}
-	_ = kong.ServiceRequest.SetHeader("X-Plugin-Headers", "available")
 	req, _ := http.NewRequest(http.MethodGet, "https://foo", nil)
 
 	dateH := ""
@@ -73,15 +68,13 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	req.Header.Set(signer.HeaderSignedDate, dateH)
 
 	authH := ""
-	if v, ok := headers["hsdp_api_signature"]; ok && len(v) > 0 {
+	if v, ok := headers["hsdp-api-signature"]; ok && len(v) > 0 {
 		authH = v[0]
 	} else {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("missing auth header: %s", strings.Join(keys, ",")))
 		return
 	}
 	req.Header.Set(signer.HeaderAuthorization, authH)
-
-	_ = kong.ServiceRequest.SetHeader("X-Plugin-Validatable", "true")
 
 	valid, err := conf.verifier.ValidateRequest(req)
 	if err != nil {
