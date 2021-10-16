@@ -124,7 +124,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		endpoint := conf.DPSEndpoint + "/Mapper"
 		resp, err := http.Post(endpoint, "application/json", bytes.NewBuffer(body))
 		if err != nil || resp.StatusCode != http.StatusOK {
-			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("error requesting token from %s", endpoint))
+			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("error requesting token from %s: %d", endpoint, resp.StatusCode))
 			return
 		}
 		var tokenResponse mapperResponse
