@@ -82,7 +82,8 @@ func (conf *Config) Access(kong *pdk.PDK) {
 			_ = kong.ServiceRequest.SetHeader("X-Mapped-Error", err.Error())
 			return
 		}
-		conf.cache.Set(key, cachedToken, time.Duration(tokenResponse.ExpiresIn)*time.Minute)
+		cachedToken = tokenResponse.AccessToken
+		conf.cache.Set(key, tokenResponse.AccessToken, time.Duration(tokenResponse.ExpiresIn)*time.Minute)
 	}
 	_ = kong.ServiceRequest.SetHeader("Authorization", "Bearer "+cachedToken.(string))
 }
@@ -101,6 +102,7 @@ func (conf *Config) mapMTLS(cn string, serial string) (*mapperResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("mapper returned statusCode %d", resp.StatusCode)
 	}
@@ -109,7 +111,6 @@ func (conf *Config) mapMTLS(cn string, serial string) (*mapperResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 	return &tokenResponse, nil
 }
 
