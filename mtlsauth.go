@@ -64,6 +64,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "invalid signature")
 		return
 	}
+	_ = kong.ServiceRequest.SetHeader("X-Signature-Status", "verified")
 
 	// Authorization
 	mtlsData, ok := headers[conf.MTLSHeader]
