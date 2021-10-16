@@ -121,9 +121,10 @@ func (conf *Config) Access(kong *pdk.PDK) {
 			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "error marshalling token request")
 			return
 		}
-		resp, err := http.Post(conf.DPSEndpoint+"/Mapper", "application/json", bytes.NewBuffer(body))
-		if err != nil {
-			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "error requesting token")
+		endpoint := conf.DPSEndpoint + "/Mapper"
+		resp, err := http.Post(endpoint, "application/json", bytes.NewBuffer(body))
+		if err != nil || resp.StatusCode != http.StatusOK {
+			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("error requesting token from %s", endpoint))
 			return
 		}
 		var tokenResponse mapperResponse
