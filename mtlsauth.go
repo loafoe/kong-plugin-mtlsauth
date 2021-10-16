@@ -46,6 +46,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("verifier failed: %v", conf.err))
 		return
 	}
+	_ = kong.ServiceRequest.SetHeader("X-Plugin-Working", "true")
 
 	// Signature validation
 	headers, err := kong.Request.GetHeaders(-1)
@@ -57,16 +58,20 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	req, _ := http.NewRequest(method, "https://foo", nil)
 	req.Header.Set(signer.HeaderAuthorization, headers[signer.HeaderAuthorization][0])
 	req.Header.Set(signer.HeaderSignedDate, headers[signer.HeaderSignedDate][0])
+
+	_ = kong.ServiceRequest.SetHeader("X-Plugin-Validatable", "true")
+
 	valid, err := conf.verifier.ValidateRequest(req)
 	if err != nil {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("validation failed: %v", err))
 		return
 	}
+	_ = kong.ServiceRequest.SetHeader("X-Plugin-Validated", "almost")
 	if !valid {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "invalid signature")
 		return
 	}
-	_ = kong.ServiceRequest.SetHeader("X-Signature-Status", "verified")
+	_ = kong.ServiceRequest.SetHeader("X-Plugin-Status", "verified")
 	_ = kong.Log.Info("Signature verified")
 
 	// Authorization
@@ -101,13 +106,13 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		}
 		resp, err := http.Post(conf.DPSEndpoint+"/Mapper", "application/json", bytes.NewBuffer(body))
 		if err != nil {
-			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("error requesting token: %v", err))
+			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("error requesting token"))
 			return
 		}
 		var tokenResponse mapperResponse
 		err = json.NewDecoder(resp.Body).Decode(&tokenResponse)
 		if err != nil {
-			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("error decoding token response: %v", err))
+			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("error decoding token response"))
 			return
 		}
 		defer resp.Body.Close()
