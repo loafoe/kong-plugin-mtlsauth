@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Kong/go-pdk"
+	"github.com/Kong/go-pdk/request"
 	"github.com/Kong/go-pdk/server"
 	"github.com/patrickmn/go-cache"
 	signer "github.com/philips-software/go-hsdp-signer"
@@ -43,53 +44,17 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("verifier failed: %v", conf.err))
 		return
 	}
-
 	// Signature validation
-	headers, err := kong.Request.GetHeaders(50)
-
-	var keys []string
-	for k := range headers {
-		keys = append(keys, k)
-	}
-
-	if err != nil {
-		_ = kong.ServiceRequest.SetHeader("X-Plugin-Headers", "failed")
-		return
-	}
-	req, _ := http.NewRequest(http.MethodGet, "https://foo", nil)
-
-	dateH := ""
-	if v, ok := headers["signeddate"]; ok && len(v) > 0 {
-		dateH = v[0]
-	} else {
-		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing signeddate header")
-		return
-	}
-	req.Header.Set(signer.HeaderSignedDate, dateH)
-
-	authH := ""
-	if v, ok := headers["hsdp-api-signature"]; ok && len(v) > 0 {
-		authH = v[0]
-	} else {
-		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("missing auth header: %s", strings.Join(keys, ",")))
-		return
-	}
-	req.Header.Set(signer.HeaderAuthorization, authH)
-
-	valid, err := conf.verifier.ValidateRequest(req)
-	if err != nil {
+	if err := conf.validateSignature(kong.Request); err != nil {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "validation failed")
 		return
 	}
-	_ = kong.ServiceRequest.SetHeader("X-Plugin-Validated", "almost")
-	if !valid {
-		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "invalid signature")
+	// Authorization
+	headers, err := kong.Request.GetHeaders(-1)
+	if err != nil {
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("get headers failed: %v", err))
 		return
 	}
-	_ = kong.ServiceRequest.SetHeader("X-Plugin-Status", "verified")
-	_ = kong.Log.Info("Signature verified")
-
-	// Authorization
 	mtlsData, ok := headers[conf.MTLSHeader]
 	if !ok || len(mtlsData) == 0 {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing mtls data")
@@ -112,38 +77,73 @@ func (conf *Config) Access(kong *pdk.PDK) {
 
 	cachedToken, found := conf.cache.Get(key)
 	if !found || cachedToken.(string) == "" { // Authorize
-		var mr = mapperRequest{
-			TPMHash:      cn,
-			DeviceSerial: serialNumber,
-		}
-		body, err := json.Marshal(&mr)
+		tokenResponse, err := conf.mapMTLS(cn, serialNumber)
 		if err != nil {
-			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "error marshalling token request")
+			_ = kong.ServiceRequest.SetHeader("X-Mapped-Error", err.Error())
 			return
 		}
-		endpoint := conf.DPSEndpoint + "/Mapper"
-		resp, err := http.Post(endpoint, "application/json", bytes.NewBuffer(body))
-		if err != nil || resp.StatusCode != http.StatusOK {
-			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("error requesting token from %s: %d", endpoint, resp.StatusCode))
-			return
-		}
-		var tokenResponse mapperResponse
-		err = json.NewDecoder(resp.Body).Decode(&tokenResponse)
-		if err != nil {
-			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "error decoding token response")
-			return
-		}
-		defer resp.Body.Close()
-		_ = kong.ServiceRequest.SetHeader("X-Plugin-Response", fmt.Sprintf("%d", resp.StatusCode))
-
-		cachedToken = tokenResponse.AccessToken
 		conf.cache.Set(key, cachedToken, time.Duration(tokenResponse.ExpiresIn)*time.Minute)
-		_ = kong.ServiceRequest.SetHeader("X-Mapped-Hash", key+"|"+tokenResponse.AccessToken)
-	} else {
-		_ = kong.ServiceRequest.SetHeader("X-Cached-Hash", key)
 	}
-
 	_ = kong.ServiceRequest.SetHeader("Authorization", "Bearer "+cachedToken.(string))
+}
+
+func (conf *Config) mapMTLS(cn string, serial string) (*mapperResponse, error) {
+	var mr = mapperRequest{
+		TPMHash:      cn,
+		DeviceSerial: serial,
+	}
+	body, err := json.Marshal(&mr)
+	if err != nil {
+		return nil, err
+	}
+	endpoint := conf.DPSEndpoint + "/Mapper"
+	resp, err := http.Post(endpoint, "application/json", bytes.NewBuffer(body))
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("mapper returned statusCode %d", resp.StatusCode)
+	}
+	var tokenResponse mapperResponse
+	err = json.NewDecoder(resp.Body).Decode(&tokenResponse)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	return &tokenResponse, nil
+}
+
+func (conf *Config) validateSignature(req request.Request) error {
+	headers, err := req.GetHeaders(-1)
+	if err != nil {
+		return err
+	}
+	testReq, _ := http.NewRequest(http.MethodGet, "https://foo", nil)
+
+	dateH := ""
+	if v, ok := headers["signeddate"]; ok && len(v) > 0 {
+		dateH = v[0]
+	} else {
+		return fmt.Errorf("missing signeddate header")
+	}
+	testReq.Header.Set(signer.HeaderSignedDate, dateH)
+
+	authH := ""
+	if v, ok := headers["hsdp-api-signature"]; ok && len(v) > 0 {
+		authH = v[0]
+	} else {
+		return fmt.Errorf("missing hsdp-api-signature header")
+	}
+	testReq.Header.Set(signer.HeaderAuthorization, authH)
+
+	valid, err := conf.verifier.ValidateRequest(testReq)
+	if err != nil {
+		return err
+	}
+	if !valid {
+		return fmt.Errorf("invalid signature")
+	}
+	return nil
 }
 
 func main() {
