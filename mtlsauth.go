@@ -39,6 +39,8 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		conf.verifier, conf.err = signer.New(conf.SharedKey, conf.SecretKey)
 		conf.cache = cache.New(30*time.Minute, 60*time.Minute)
 	})
+	_ = kong.Log.Info("Verifying signature")
+	_ = kong.ServiceRequest.SetHeader("X-Plugin-Active", "true")
 
 	if conf.err != nil {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("verifier failed: %v", conf.err))
@@ -65,6 +67,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		return
 	}
 	_ = kong.ServiceRequest.SetHeader("X-Signature-Status", "verified")
+	_ = kong.Log.Info("Signature verified")
 
 	// Authorization
 	mtlsData, ok := headers[conf.MTLSHeader]
