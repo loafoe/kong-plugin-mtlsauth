@@ -72,20 +72,23 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		return
 	}
 	serialNumber := serialData[0]
-	key := cn + "|" + serialNumber
+	key := cn + "|" + serialNumber + "|v1"
 	_ = kong.ServiceRequest.SetHeader("X-Cache-Key", key)
 
-	cachedToken, found := conf.cache.Get(key)
-	if !found || cachedToken.(string) == "" { // Authorize
-		tokenResponse, err := conf.mapMTLS(cn, serialNumber)
+	tr, found := conf.cache.Get(key)
+	if !found { // Authorize
+		newTokenResponse, err := conf.mapMTLS(cn, serialNumber)
 		if err != nil {
 			_ = kong.ServiceRequest.SetHeader("X-Mapped-Error", err.Error())
 			return
 		}
-		cachedToken = tokenResponse.AccessToken
-		conf.cache.Set(key, tokenResponse.AccessToken, time.Duration(tokenResponse.ExpiresIn-60)*time.Second)
+		tr = *newTokenResponse
+		conf.cache.Set(key, tr, time.Duration(newTokenResponse.ExpiresIn-60)*time.Second)
 	}
-	_ = kong.ServiceRequest.SetHeader("Authorization", "Bearer "+cachedToken.(string))
+	tokenResponse := tr.(mapperResponse)
+	expiresIn := time.Until(tokenResponse.ExpiresAt) * time.Second
+	_ = kong.ServiceRequest.SetHeader("Authorization", "Bearer "+tokenResponse.AccessToken)
+	_ = kong.ServiceRequest.SetHeader("X-Token-Expires", fmt.Sprintf("%d", expiresIn))
 }
 
 func (conf *Config) mapMTLS(cn string, serial string) (*mapperResponse, error) {
@@ -111,6 +114,7 @@ func (conf *Config) mapMTLS(cn string, serial string) (*mapperResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	tokenResponse.ExpiresAt = time.Now().Add(time.Duration(tokenResponse.ExpiresIn) * time.Second)
 	return &tokenResponse, nil
 }
 
