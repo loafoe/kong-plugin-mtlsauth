@@ -51,9 +51,11 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	// Signature validation
 	headers, err := kong.Request.GetHeaders(-1)
 	if err != nil {
-		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("getHeaders failed: %v", err))
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Headers", "failed")
 		return
 	}
+	_ = kong.ServiceRequest.SetHeader("X-Plugin-Headers", "available")
+
 	method, _ := kong.Request.GetMethod()
 	req, _ := http.NewRequest(method, "https://foo", nil)
 	req.Header.Set(signer.HeaderAuthorization, headers[signer.HeaderAuthorization][0])
@@ -63,7 +65,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 
 	valid, err := conf.verifier.ValidateRequest(req)
 	if err != nil {
-		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("validation failed: %v", err))
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "validation failed")
 		return
 	}
 	_ = kong.ServiceRequest.SetHeader("X-Plugin-Validated", "almost")
@@ -85,7 +87,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing serial data")
 		return
 	}
-	mtlsFields := strings.Split(serialData[0], ",")
+	mtlsFields := strings.Split(mtlsData[0], ",")
 	var cn string
 	if found, _ := fmt.Sscanf(mtlsFields[0], "CN=%s", &cn); found != 1 {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing CN")
@@ -93,6 +95,8 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	}
 	serialNumber := serialData[0]
 	key := cn + "|" + serialNumber
+	_ = kong.ServiceRequest.SetHeader("X-Plugin-Key", key)
+
 	cachedToken, found := conf.cache.Get(key)
 	if !found { // Authorize
 		var mr = mapperRequest{
@@ -106,13 +110,13 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		}
 		resp, err := http.Post(conf.DPSEndpoint+"/Mapper", "application/json", bytes.NewBuffer(body))
 		if err != nil {
-			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("error requesting token"))
+			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "error requesting token")
 			return
 		}
 		var tokenResponse mapperResponse
 		err = json.NewDecoder(resp.Body).Decode(&tokenResponse)
 		if err != nil {
-			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("error decoding token response"))
+			_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "error decoding token response")
 			return
 		}
 		defer resp.Body.Close()
