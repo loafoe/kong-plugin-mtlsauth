@@ -73,7 +73,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	}
 	serialNumber := serialData[0]
 	key := cn + "|" + serialNumber
-	_ = kong.ServiceRequest.SetHeader("X-Plugin-Key", key)
+	_ = kong.ServiceRequest.SetHeader("X-Cache-Key", key)
 
 	cachedToken, found := conf.cache.Get(key)
 	if !found || cachedToken.(string) == "" { // Authorize
@@ -83,7 +83,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 			return
 		}
 		cachedToken = tokenResponse.AccessToken
-		conf.cache.Set(key, tokenResponse.AccessToken, time.Duration(tokenResponse.ExpiresIn)*time.Minute)
+		conf.cache.Set(key, tokenResponse.AccessToken, time.Duration(tokenResponse.ExpiresIn-60)*time.Second)
 	}
 	_ = kong.ServiceRequest.SetHeader("Authorization", "Bearer "+cachedToken.(string))
 }
