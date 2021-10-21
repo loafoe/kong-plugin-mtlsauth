@@ -79,7 +79,13 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	if !found { // Authorize
 		newTokenResponse, err := conf.mapMTLS(cn, serialNumber)
 		if err != nil {
+			conf.cache.Delete(key)
 			_ = kong.ServiceRequest.SetHeader("X-Mapped-Error", err.Error())
+			return
+		}
+		if newTokenResponse.AccessToken == "" || newTokenResponse.ExpiresIn <= 0 {
+			conf.cache.Delete(key)
+			_ = kong.ServiceRequest.SetHeader("X-Token-Error", "empty token or invalid expiry")
 			return
 		}
 		tr = *newTokenResponse
@@ -87,6 +93,11 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	}
 	tokenResponse := tr.(mapperResponse)
 	expiresIn := time.Until(tokenResponse.ExpiresAt) / time.Second
+	if expiresIn <= 0 {
+		conf.cache.Delete(key)
+		_ = kong.ServiceRequest.SetHeader("X-Token-Error", "negative expiry")
+		return
+	}
 	_ = kong.ServiceRequest.SetHeader("Authorization", "Bearer "+tokenResponse.AccessToken)
 	_ = kong.ServiceRequest.SetHeader("X-Token-Expires", fmt.Sprintf("%d", expiresIn))
 }
