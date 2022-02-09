@@ -162,11 +162,12 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 	r.SetHeader("Authorization", "Bearer "+conf.serviceClient.Token())
 	r.SetHeader("Content-Type", "application/json")
 	r.SetHeader("Accept", "application/json")
-	resp, err := r.Execute(http.MethodGet, endpoint)
+	resp, _ := r.Execute(http.MethodGet, endpoint)
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("getDevice returned statusCode %d", resp.StatusCode())
 	}
 	var getResponse GetResponse
+	var err error
 	err = json.NewDecoder(bytes.NewReader(resp.Body())).Decode(&getResponse)
 	if err != nil {
 		return nil, err
