@@ -12,21 +12,54 @@ import (
 	"github.com/Kong/go-pdk"
 	"github.com/Kong/go-pdk/request"
 	"github.com/Kong/go-pdk/server"
+	"github.com/go-resty/resty/v2"
 	"github.com/patrickmn/go-cache"
+	"github.com/philips-software/go-hsdp-api/iam"
 	signer "github.com/philips-software/go-hsdp-signer"
 )
 
 // Config
 type Config struct {
-	SharedKey    string `json:"shared_key"`
-	SecretKey    string `json:"secret_key"`
-	MTLSHeader   string `json:"mtls_header"`
-	SerialHeader string `json:"serial_header"`
-	DPSEndpoint  string `json:"dps_endpoint"`
-	verifier     *signer.Signer
-	err          error
-	cache        *cache.Cache
-	doOnce       sync.Once
+	SharedKey          string `json:"shared_key"`
+	SecretKey          string `json:"secret_key"`
+	Region             string `json:"region"`
+	Environment        string `json:"environment"`
+	ServicePrivateKey  string `json:"service_private_key"`
+	ServiceID          string `json:"service_id"`
+	MTLSHeader         string `json:"mtls_header"`
+	SerialHeader       string `json:"serial_header"`
+	GetDeviceEndpoint  string `json:"get_device_endpoint"`
+	OAuth2ClientID     string `json:"oauth2_client_id"`
+	OAuth2ClientSecret string `json:"oauth2_client_secret"`
+	verifier           *signer.Signer
+	serviceClient      *iam.Client
+	deviceClient       *iam.Client
+	err                error
+	cache              *cache.Cache
+	doOnce             sync.Once
+}
+
+type GetResponse struct {
+	Entry       []Device `json:"entry"`
+	TotalResult int      `json:"totalResult"`
+}
+
+type Device struct {
+	ID           string        `json:"id"`
+	Name         string        `json:"name"`
+	PracticeID   string        `json:"practiceId"`
+	LoginID      string        `json:"loginId"`
+	Password     string        `json:"password"`
+	ClientID     string        `json:"clientId"`
+	ClientSecret string        `json:"clientSecret"`
+	CN           string        `json:"cn"`
+	Associations []Association `json:"associations"`
+}
+
+type Association struct {
+	Name         string `json:"name"`
+	SerialNumber string `json:"serialNumber"`
+	ModelNumber  string `json:"modelNumber"`
 }
 
 //nolint
@@ -39,9 +72,34 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	conf.doOnce.Do(func() {
 		conf.verifier, conf.err = signer.New(conf.SharedKey, conf.SecretKey)
 		conf.cache = cache.New(30*time.Minute, 60*time.Minute)
+		if conf.err == nil {
+			conf.serviceClient, conf.err = iam.NewClient(nil, &iam.Config{
+				Region:      conf.Region,
+				Environment: conf.Environment,
+			})
+			if conf.err == nil {
+				err := conf.serviceClient.ServiceLogin(iam.Service{
+					PrivateKey: conf.ServicePrivateKey,
+					ServiceID:  conf.ServiceID,
+				})
+				if err != nil {
+					conf.err = err
+				}
+			}
+		}
+		var err error
+		conf.deviceClient, err = iam.NewClient(nil, &iam.Config{
+			OAuth2ClientID: conf.OAuth2ClientID,
+			OAuth2Secret:   conf.OAuth2ClientSecret,
+			Region:         conf.Region,
+			Environment:    conf.Environment,
+		})
+		if err != nil {
+			conf.err = err
+		}
 	})
 	if conf.err != nil {
-		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("verifier failed: %v", conf.err))
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("init failed: %v", conf.err))
 		return
 	}
 	// Signature validation
@@ -60,24 +118,18 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing mtls data")
 		return
 	}
-	serialData, ok := headers[conf.SerialHeader]
-	if !ok || len(serialData) == 0 {
-		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing serial data")
-		return
-	}
 	mtlsFields := strings.Split(mtlsData[0], ",")
 	var cn string
 	if found, _ := fmt.Sscanf(mtlsFields[0], "CN=%s", &cn); found != 1 {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing CN")
 		return
 	}
-	serialNumber := serialData[0]
-	key := cn + "|" + serialNumber + "|v1"
+	key := cn + "|v1"
 	_ = kong.ServiceRequest.SetHeader("X-Cache-Key", key)
 
 	tr, found := conf.cache.Get(key)
 	if !found { // Authorize
-		newTokenResponse, err := conf.mapMTLS(cn, serialNumber)
+		newTokenResponse, err := conf.mapMTLS(cn)
 		if err != nil {
 			conf.cache.Delete(key)
 			_ = kong.ServiceRequest.SetHeader("X-Mapped-Error", err.Error())
@@ -102,31 +154,37 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	_ = kong.ServiceRequest.SetHeader("X-Token-Expires", fmt.Sprintf("%d", expiresIn))
 }
 
-func (conf *Config) mapMTLS(cn string, serial string) (*mapperResponse, error) {
-	var mr = mapperRequest{
-		TPMHash:      cn,
-		DeviceSerial: serial,
+func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
+	// Fetch device info
+	endpoint := conf.GetDeviceEndpoint + "cn=" + cn
+	client := resty.New()
+	r := client.R()
+	r.SetHeader("Authorization", "Bearer "+conf.serviceClient.Token())
+	r.SetHeader("Content-Type", "application/json")
+	r.SetHeader("Accept", "application/json")
+	resp, err := r.Execute(http.MethodGet, endpoint)
+	if resp.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("getDevice returned statusCode %d", resp.StatusCode())
 	}
-	body, err := json.Marshal(&mr)
+	var getResponse GetResponse
+	err = json.NewDecoder(bytes.NewReader(resp.Body())).Decode(&getResponse)
 	if err != nil {
 		return nil, err
 	}
-	endpoint := conf.DPSEndpoint + "/Mapper"
-	resp, err := http.Post(endpoint, "application/json", bytes.NewBuffer(body))
-	if err != nil {
+	if getResponse.TotalResult == 0 || len(getResponse.Entry) < 1 {
+		return nil, fmt.Errorf("no results found for CN: %s", cn)
+	}
+	device := getResponse.Entry[0]
+
+	// Fetch accessToken
+	if err := conf.deviceClient.Login(device.LoginID, device.Password); err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("mapper returned statusCode %d", resp.StatusCode)
-	}
-	var tokenResponse mapperResponse
-	err = json.NewDecoder(resp.Body).Decode(&tokenResponse)
-	if err != nil {
-		return nil, err
-	}
-	tokenResponse.ExpiresAt = time.Now().Add(time.Duration(tokenResponse.ExpiresIn) * time.Second)
-	return &tokenResponse, nil
+	return &mapperResponse{
+		AccessToken:  conf.deviceClient.Token(),
+		RefreshToken: conf.deviceClient.RefreshToken(),
+		ExpiresAt:    time.Unix(conf.deviceClient.Expires(), 0),
+	}, nil
 }
 
 func (conf *Config) validateSignature(req request.Request) error {
