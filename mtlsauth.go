@@ -31,6 +31,7 @@ type Config struct {
 	GetDeviceEndpoint  string `json:"get_device_endpoint"`
 	OAuth2ClientID     string `json:"oauth2_client_id"`
 	OAuth2ClientSecret string `json:"oauth2_client_secret"`
+	DebugLog           string `json:"debug_log"`
 	verifier           *signer.Signer
 	serviceClient      *iam.Client
 	deviceClient       *iam.Client
@@ -76,6 +77,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 			conf.serviceClient, conf.err = iam.NewClient(nil, &iam.Config{
 				Region:      conf.Region,
 				Environment: conf.Environment,
+				DebugLog:    conf.DebugLog,
 			})
 			if conf.err == nil {
 				err := conf.serviceClient.ServiceLogin(iam.Service{
@@ -93,6 +95,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 			OAuth2Secret:   conf.OAuth2ClientSecret,
 			Region:         conf.Region,
 			Environment:    conf.Environment,
+			DebugLog:       conf.DebugLog,
 		})
 		if err != nil {
 			conf.err = err

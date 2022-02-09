@@ -34,8 +34,6 @@ jobs:
         with:
           context: ./
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: loafoe/kong-plugin-hsdpverifier,docker.na1.hsdp.io/loafoe/kong-plugin-mtlsauth
-          cache-from: type=registry,ref=loafoe/kong-plugin-mtlsauth:buildcache
-          cache-to: type=inline
