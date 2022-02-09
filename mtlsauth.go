@@ -167,8 +167,7 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 		return nil, fmt.Errorf("getDevice returned statusCode %d", resp.StatusCode())
 	}
 	var getResponse GetResponse
-	var err error
-	err = json.NewDecoder(bytes.NewReader(resp.Body())).Decode(&getResponse)
+	err := json.NewDecoder(bytes.NewReader(resp.Body())).Decode(&getResponse)
 	if err != nil {
 		return nil, err
 	}
