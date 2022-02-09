@@ -75,9 +75,11 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		conf.cache = cache.New(30*time.Minute, 60*time.Minute)
 		if conf.err == nil {
 			conf.serviceClient, conf.err = iam.NewClient(nil, &iam.Config{
-				Region:      conf.Region,
-				Environment: conf.Environment,
-				DebugLog:    conf.DebugLog,
+				OAuth2ClientID: conf.OAuth2ClientID,
+				OAuth2Secret:   conf.OAuth2ClientSecret,
+				Region:         conf.Region,
+				Environment:    conf.Environment,
+				DebugLog:       conf.DebugLog,
 			})
 			if conf.err == nil {
 				err := conf.serviceClient.ServiceLogin(iam.Service{
