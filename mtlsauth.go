@@ -25,7 +25,7 @@ type Config struct {
 	Region             string `json:"region"`
 	Environment        string `json:"environment"`
 	ServicePrivateKey  string `json:"service_private_key"`
-	ServiceID          string `json:"service_id"`
+	ServiceUser        string `json:"service_user"`
 	MTLSHeader         string `json:"mtls_header"`
 	SerialHeader       string `json:"serial_header"`
 	GetDeviceEndpoint  string `json:"get_device_endpoint"`
@@ -82,7 +82,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 			if conf.err == nil {
 				err := conf.serviceClient.ServiceLogin(iam.Service{
 					PrivateKey: conf.ServicePrivateKey,
-					ServiceID:  conf.ServiceID,
+					ServiceID:  conf.ServiceUser,
 				})
 				if err != nil {
 					conf.err = err
@@ -101,8 +101,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 			conf.err = err
 		}
 	})
-	_ = kong.ServiceRequest.SetHeader("X-Service-ID", conf.ServiceID)
-	_ = kong.ServiceRequest.SetHeader("X-Service-PrivateKey", conf.ServicePrivateKey)
+	_ = kong.ServiceRequest.SetHeader("X-Service-ID", conf.ServiceUser)
 
 	if conf.err != nil {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("init failed: %v", conf.err))
