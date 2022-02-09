@@ -1,6 +1,6 @@
 # kong-plugin-mtlauth
 
-Authoriation using mTLS certs from Caddy
+Authorization using mTLS certs from Caddy
 
 ## configuration
 
@@ -11,8 +11,14 @@ plugins:
        shared_key: XXX
        secret_key: YYY
        mtls_header: X-Client-Common-Name
-       serial_header: X-Client-Device-Serial
-       dps_url: http://dps.apps.internal:8080
+       get_device_url: http://dps.apps.internal:8080
+       service_id: aaa@bbb.com
+       service_private_key: .....
+       oauth2_client_id: connectClient
+       oauth2_client_secret: s3cretpW
+       region: us-east
+       environment: client-test
+       
 ```
 
 ## fields
