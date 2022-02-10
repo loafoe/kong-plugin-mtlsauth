@@ -173,9 +173,10 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 	endpoint := conf.GetDeviceEndpoint + "cn=" + cn
 	client := resty.New()
 	r := client.R()
-	r.SetHeader("Authorization", "Bearer "+conf.serviceClient.Token())
-	r.SetHeader("Content-Type", "application/json")
-	r.SetHeader("Accept", "application/json")
+	r = r.SetHeader("Authorization", "Bearer "+conf.serviceClient.Token())
+	r = r.SetHeader("Content-Type", "application/json")
+	r = r.SetHeader("Accept", "application/json")
+	r = r.SetHeader("Api-Version", "1")
 	resp, _ := r.Execute(http.MethodGet, endpoint)
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("getDevice returned statusCode %d", resp.StatusCode())
