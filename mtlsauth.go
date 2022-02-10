@@ -139,7 +139,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		}
 		if newTokenResponse.AccessToken == "" || newTokenResponse.ExpiresIn <= 0 {
 			conf.cache.Delete(key)
-			_ = kong.ServiceRequest.SetHeader("X-Token-Error", "empty token or invalid expiry")
+			_ = kong.ServiceRequest.SetHeader("X-Token-Error", fmt.Sprintf("empty token or invalid expiry (%d)", newTokenResponse.ExpiresIn))
 			return
 		}
 		tr = *newTokenResponse
@@ -194,10 +194,13 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 	if err := deviceClient.Login(device.LoginID, device.Password); err != nil {
 		return nil, fmt.Errorf("error logging in using device credentials: %w", err)
 	}
+	expiresAt := time.Unix(deviceClient.Expires(), 0).UTC()
+
 	return &mapperResponse{
 		AccessToken:  deviceClient.Token(),
 		RefreshToken: deviceClient.RefreshToken(),
-		ExpiresAt:    time.Unix(deviceClient.Expires(), 0),
+		ExpiresAt:    expiresAt,
+		ExpiresIn:    int(expiresAt.Sub(time.Now().UTC())),
 	}, nil
 }
 
