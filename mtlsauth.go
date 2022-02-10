@@ -186,7 +186,7 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	if getResponse.TotalResult == 0 || len(getResponse.Entry) < 1 {
+	if len(getResponse.Entry) < 1 {
 		return nil, fmt.Errorf("no results found for CN: %s", cn)
 	}
 	device := getResponse.Entry[0]
