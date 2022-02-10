@@ -120,15 +120,24 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	}
 	mtlsData, ok := headers[conf.MTLSHeader]
 	if !ok || len(mtlsData) == 0 {
-		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing mtls data")
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing mTLS data")
 		return
 	}
+
+	// Extract CN
 	mtlsFields := strings.Split(mtlsData[0], ",")
 	var cn string
-	if found, _ := fmt.Sscanf(mtlsFields[0], "CN=%s", &cn); found != 1 {
+	for _, field := range mtlsFields {
+		if found, _ := fmt.Sscanf(field, "CN=%s", &cn); found == 1 {
+			break
+		}
+	}
+	if cn == "" {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing CN")
 		return
 	}
+
+	// Cache key
 	key := cn + "|v1"
 	_ = kong.ServiceRequest.SetHeader("X-Cache-Key", key)
 
