@@ -170,7 +170,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 
 func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 	// Fetch device info
-	endpoint := conf.GetDeviceEndpoint + "cn=" + cn
+	endpoint := conf.GetDeviceEndpoint + "?cn=" + cn
 	client := resty.New()
 	r := client.R()
 	r = r.SetHeader("Authorization", "Bearer "+conf.serviceClient.Token())
