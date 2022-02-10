@@ -34,7 +34,6 @@ type Config struct {
 	DebugLog           string `json:"debug_log"`
 	verifier           *signer.Signer
 	serviceClient      *iam.Client
-	deviceClient       *iam.Client
 	err                error
 	cache              *cache.Cache
 	doOnce             sync.Once
@@ -88,17 +87,6 @@ func (conf *Config) Access(kong *pdk.PDK) {
 					conf.err = err
 				}
 			}
-		}
-		var err error
-		conf.deviceClient, err = iam.NewClient(nil, &iam.Config{
-			OAuth2ClientID: conf.OAuth2ClientID,
-			OAuth2Secret:   conf.OAuth2ClientSecret,
-			Region:         conf.Region,
-			Environment:    conf.Environment,
-			DebugLog:       conf.DebugLog,
-		})
-		if err != nil {
-			conf.err = err
 		}
 	})
 	_ = kong.ServiceRequest.SetHeader("X-Service-ID", conf.ServiceIdentity)
@@ -191,14 +179,25 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 	}
 	device := getResponse.Entry[0]
 
+	deviceClient, err := iam.NewClient(nil, &iam.Config{
+		OAuth2ClientID: device.ClientID,
+		OAuth2Secret:   device.ClientSecret,
+		Region:         conf.Region,
+		Environment:    conf.Environment,
+		DebugLog:       conf.DebugLog,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error creating IAM client: %w", err)
+	}
+
 	// Fetch accessToken
-	if err := conf.deviceClient.Login(device.LoginID, device.Password); err != nil {
-		return nil, err
+	if err := deviceClient.Login(device.LoginID, device.Password); err != nil {
+		return nil, fmt.Errorf("error logging in using device credentials: %w", err)
 	}
 	return &mapperResponse{
-		AccessToken:  conf.deviceClient.Token(),
-		RefreshToken: conf.deviceClient.RefreshToken(),
-		ExpiresAt:    time.Unix(conf.deviceClient.Expires(), 0),
+		AccessToken:  deviceClient.Token(),
+		RefreshToken: deviceClient.RefreshToken(),
+		ExpiresAt:    time.Unix(deviceClient.Expires(), 0),
 	}, nil
 }
 
