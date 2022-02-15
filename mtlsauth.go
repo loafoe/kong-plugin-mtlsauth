@@ -12,13 +12,13 @@ import (
 	"github.com/Kong/go-pdk"
 	"github.com/Kong/go-pdk/request"
 	"github.com/Kong/go-pdk/server"
-	"github.com/go-resty/resty/v2"
 	"github.com/patrickmn/go-cache"
 	"github.com/philips-software/go-hsdp-api/iam"
 	signer "github.com/philips-software/go-hsdp-signer"
+	"gopkg.in/resty.v1"
 )
 
-// Config
+// Config holds the configuration of the plugin
 type Config struct {
 	SharedKey          string `json:"shared_key"`
 	SecretKey          string `json:"secret_key"`
@@ -62,7 +62,8 @@ type Association struct {
 	ModelNumber  string `json:"modelNumber"`
 }
 
-//nolint
+// New returns a new plugin instance
+// nolint
 func New() interface{} {
 	return &Config{}
 }
@@ -167,8 +168,12 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 	// Fetch device info
 	endpoint := conf.GetDeviceEndpoint + "?cn=" + cn
 	client := resty.New()
+	token, err := conf.serviceClient.Token()
+	if err != nil {
+		return nil, err
+	}
 	r := client.R()
-	r = r.SetHeader("Authorization", "Bearer "+conf.serviceClient.Token())
+	r = r.SetHeader("Authorization", "Bearer "+token)
 	r = r.SetHeader("Content-Type", "application/json")
 	r = r.SetHeader("Accept", "application/json")
 	r = r.SetHeader("Api-Version", "1")
@@ -177,7 +182,7 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 		return nil, fmt.Errorf("getDevice returned statusCode %d", resp.StatusCode())
 	}
 	var getResponse GetResponse
-	err := json.NewDecoder(bytes.NewReader(resp.Body())).Decode(&getResponse)
+	err = json.NewDecoder(bytes.NewReader(resp.Body())).Decode(&getResponse)
 	if err != nil {
 		return nil, err
 	}
@@ -202,9 +207,12 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 		return nil, fmt.Errorf("error logging in using device credentials: %w", err)
 	}
 	expiresAt := time.Unix(deviceClient.Expires(), 0).UTC()
-
+	token, err = deviceClient.Token()
+	if err != nil {
+		return nil, fmt.Errorf("token error: %w", err)
+	}
 	return &mapperResponse{
-		AccessToken:  deviceClient.Token(),
+		AccessToken:  token,
 		RefreshToken: deviceClient.RefreshToken(),
 		ExpiresAt:    expiresAt,
 		ExpiresIn:    int(expiresAt.Sub(time.Now().UTC())),
