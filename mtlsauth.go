@@ -62,6 +62,10 @@ type Association struct {
 	ModelNumber  string `json:"modelNumber"`
 }
 
+const (
+	preSeconds = 60
+)
+
 // New returns a new plugin instance
 // nolint
 func New() interface{} {
@@ -136,7 +140,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	if found {
 		tokenResponse = tr.(mapperResponse)
 		expiresIn = time.Until(tokenResponse.ExpiresAt) / time.Second
-		if expiresIn <= 0 {
+		if expiresIn <= preSeconds {
 			conf.cache.Delete(key)
 			conf.cache.DeleteExpired()
 			found = false
@@ -146,16 +150,18 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		newTokenResponse, err := conf.mapMTLS(cn)
 		if err != nil {
 			conf.cache.Delete(key)
+			conf.cache.DeleteExpired()
 			_ = kong.ServiceRequest.SetHeader("X-Mapped-Error", err.Error())
 			return
 		}
 		if newTokenResponse.AccessToken == "" || newTokenResponse.ExpiresIn <= 0 {
 			conf.cache.Delete(key)
+			conf.cache.DeleteExpired()
 			_ = kong.ServiceRequest.SetHeader("X-Token-Error", fmt.Sprintf("empty token or invalid expiry (%d)", newTokenResponse.ExpiresIn))
 			return
 		}
 		tr = *newTokenResponse
-		conf.cache.Set(key, tr, time.Duration(newTokenResponse.ExpiresIn-60)*time.Second)
+		conf.cache.Set(key, tr, time.Duration(newTokenResponse.ExpiresIn-preSeconds)*time.Second)
 		tokenResponse = tr.(mapperResponse)
 		expiresIn = time.Until(tokenResponse.ExpiresAt) / time.Second
 	}
