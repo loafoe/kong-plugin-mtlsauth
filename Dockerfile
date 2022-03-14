@@ -1,4 +1,5 @@
 FROM golang:1.18rc1-alpine3.14 AS builder
+RUN apk add git
 WORKDIR /build
 COPY go.mod .
 COPY go.sum .
