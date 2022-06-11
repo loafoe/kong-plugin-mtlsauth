@@ -111,13 +111,15 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("get headers failed: %v", err))
 		return
 	}
-	// Pre-exisiting Authorization header has priority
+
+	// Pre-existing Authorization header have priority
 	upstreamAuth, ok := headers["Authorization"]
 	if ok && len(upstreamAuth) > 0 {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Info", "existing auth header found")
 		return
 	}
 
+	// mTLS based authorization starts here
 	mtlsData, ok := headers[conf.MTLSHeader]
 	if !ok || len(mtlsData) == 0 {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing mTLS data")
