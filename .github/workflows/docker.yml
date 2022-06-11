@@ -9,9 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       -
-        name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-      -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       -
@@ -36,4 +33,4 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64
           push: true
-          tags: loafoe/kong-plugin-hsdpverifier,docker.na1.hsdp.io/loafoe/kong-plugin-mtlsauth
+          tags: loafoe/kong-plugin-mtlsauth,docker.na1.hsdp.io/loafoe/kong-plugin-mtlsauth
