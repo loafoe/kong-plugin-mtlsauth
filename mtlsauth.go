@@ -111,6 +111,13 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("get headers failed: %v", err))
 		return
 	}
+	// Pre-exisiting Authorization header has priority
+	upstreamAuth, ok := headers["Authorization"]
+	if ok && len(upstreamAuth) > 0 {
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Info", "existing auth header found")
+		return
+	}
+
 	mtlsData, ok := headers[conf.MTLSHeader]
 	if !ok || len(mtlsData) == 0 {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "missing mTLS data")
@@ -183,6 +190,7 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 	r = r.SetHeader("Content-Type", "application/json")
 	r = r.SetHeader("Accept", "application/json")
 	r = r.SetHeader("Api-Version", "1")
+	// Call to device registration service
 	resp, _ := r.Execute(http.MethodGet, endpoint)
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("getDevice returned statusCode %d", resp.StatusCode())
@@ -248,6 +256,7 @@ func (conf *Config) validateSignature(req request.Request) error {
 	}
 	testReq.Header.Set(signer.HeaderAuthorization, authH)
 
+	// TODO: check if we should validate testReq or just req
 	valid, err := conf.verifier.ValidateRequest(testReq)
 	if err != nil {
 		return err
