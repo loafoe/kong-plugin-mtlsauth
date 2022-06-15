@@ -1,4 +1,4 @@
-package main
+package mtlsauth
 
 import (
 	"bytes"
@@ -11,7 +11,6 @@ import (
 
 	"github.com/Kong/go-pdk"
 	"github.com/Kong/go-pdk/request"
-	"github.com/Kong/go-pdk/server"
 	"github.com/patrickmn/go-cache"
 	"github.com/philips-software/go-hsdp-api/iam"
 	signer "github.com/philips-software/go-hsdp-signer"
@@ -35,7 +34,9 @@ type Config struct {
 	verifier           *signer.Signer
 	serviceClient      *iam.Client
 	err                error
+	initialized        bool
 	cache              *cache.Cache
+	mu                 sync.Mutex
 	doOnce             sync.Once
 }
 
@@ -74,26 +75,38 @@ func New() interface{} {
 
 // Access implements the Access step
 func (conf *Config) Access(kong *pdk.PDK) {
-	conf.doOnce.Do(func() {
-		conf.verifier, conf.err = signer.New(conf.SharedKey, conf.SecretKey)
-		conf.cache = cache.New(30*time.Minute, 30*time.Minute)
-		if conf.err == nil {
-			conf.serviceClient, conf.err = iam.NewClient(nil, &iam.Config{
+	if !conf.initialized {
+		conf.mu.Lock()
+		initFunc := func() error {
+			verifier, err := signer.New(conf.SharedKey, conf.SecretKey)
+			if err != nil {
+				return err
+			}
+			conf.verifier = verifier
+			conf.cache = cache.New(30*time.Minute, 30*time.Minute)
+
+			serviceClient, err := iam.NewClient(nil, &iam.Config{
 				Region:      conf.Region,
 				Environment: conf.Environment,
 				DebugLog:    conf.DebugLog,
 			})
-			if conf.err == nil {
-				err := conf.serviceClient.ServiceLogin(iam.Service{
-					PrivateKey: conf.ServicePrivateKey,
-					ServiceID:  conf.ServiceIdentity,
-				})
-				if err != nil {
-					conf.err = err
-				}
+			if err != nil {
+				return err
 			}
+			conf.serviceClient = serviceClient
+			// TODO: add a redo here to handle transient errors
+			err = conf.serviceClient.ServiceLogin(iam.Service{
+				PrivateKey: conf.ServicePrivateKey,
+				ServiceID:  conf.ServiceIdentity,
+			})
+			return err
 		}
-	})
+		conf.doOnce.Do(func() {
+			conf.err = initFunc()
+		})
+		conf.initialized = true
+		conf.mu.Unlock()
+	}
 	_ = kong.ServiceRequest.SetHeader("X-Service-ID", conf.ServiceIdentity)
 
 	if conf.err != nil {
@@ -267,8 +280,4 @@ func (conf *Config) validateSignature(req request.Request) error {
 		return fmt.Errorf("invalid signature")
 	}
 	return nil
-}
-
-func main() {
-	_ = server.StartServer(New, "0.1", 1000)
 }

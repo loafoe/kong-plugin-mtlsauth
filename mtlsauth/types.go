@@ -1,6 +1,8 @@
-package main
+package mtlsauth
 
-import "time"
+import (
+	"time"
+)
 
 type mapperResponse struct {
 	AccessToken  string    `json:"access_token"`
