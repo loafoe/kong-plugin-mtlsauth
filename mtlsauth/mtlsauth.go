@@ -28,8 +28,6 @@ type Config struct {
 	MTLSHeader         string `json:"mtls_header"`
 	SerialHeader       string `json:"serial_header"`
 	GetDeviceEndpoint  string `json:"get_device_endpoint"`
-	OAuth2ClientID     string `json:"oauth2_client_id"`
-	OAuth2ClientSecret string `json:"oauth2_client_secret"`
 	DebugLog           string `json:"debug_log"`
 	verifier           *signer.Signer
 	serviceClient      *iam.Client
