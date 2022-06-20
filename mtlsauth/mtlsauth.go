@@ -240,7 +240,7 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 		"username":   device.LoginID,
 		"password":   device.Password,
 	})
-	resp, _ = r.Execute(http.MethodPost, conf.DeviceTokenURL)
+	resp, _ = rt.Execute(http.MethodPost, conf.DeviceTokenURL)
 
 	var tr tokenResponse
 	err = json.NewDecoder(bytes.NewReader(resp.Body())).Decode(&tr)
