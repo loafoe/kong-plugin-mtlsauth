@@ -1,10 +1,10 @@
-package mtlsauth_test
+package auth_test
 
 import (
 	"testing"
 
 	"github.com/Kong/go-pdk/test"
-	"github.com/loafoe/kong-plugin-mtlsauth/mtlsauth"
+	"github.com/loafoe/kong-plugin-mtlsauth/auth"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,9 +15,9 @@ func TestPlugin(t *testing.T) {
 		Headers: map[string][]string{"X-Hi": {"hello"}},
 	})
 	assert.NoError(t, err)
-	cfg := mtlsauth.New()
+	cfg := auth.New()
 
-	config, ok := cfg.(*mtlsauth.Config)
+	config, ok := cfg.(*auth.Config)
 	if !assert.Equal(t, true, ok) {
 		return
 	}

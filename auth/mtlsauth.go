@@ -1,4 +1,4 @@
-package mtlsauth
+package auth
 
 import (
 	"bytes"
@@ -68,7 +68,6 @@ type tokenResponse struct {
 	RefreshToken string `json:"refresh_token"`
 	ExpiresIn    int64  `json:"expires_in"`
 	TokenType    string `json:"token_type"`
-	IDToken      string `json:"id_token"`
 }
 
 const (
@@ -240,19 +239,23 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 		"username":   device.LoginID,
 		"password":   device.Password,
 	})
-	resp, _ = rt.Execute(http.MethodPost, conf.DeviceTokenURL)
+	resp, err = rt.Execute(http.MethodPost, conf.DeviceTokenURL)
+	if err != nil {
+		return nil, fmt.Errorf("error performing device token call: %w", err)
+	}
 
 	var tr tokenResponse
 	err = json.NewDecoder(bytes.NewReader(resp.Body())).Decode(&tr)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error decoding token response: %w", err)
 	}
-	expiresAt := time.Unix(time.Now().Unix()+tr.ExpiresIn, 0).UTC()
+	// TODO: hardcoded expiresIn value
+	expiresAt := time.Unix(time.Now().Unix()+1799, 0).UTC()
 	return &mapperResponse{
 		AccessToken:  tr.AccessToken,
 		RefreshToken: tr.RefreshToken,
 		ExpiresAt:    expiresAt,
-		ExpiresIn:    tr.ExpiresIn,
+		ExpiresIn:    1799,
 	}, nil
 }
 

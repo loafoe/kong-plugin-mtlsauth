@@ -1,4 +1,4 @@
-package mtlsauth
+package auth
 
 import (
 	"time"
