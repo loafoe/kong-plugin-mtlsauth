@@ -19,23 +19,24 @@ import (
 
 // Config holds the configuration of the plugin
 type Config struct {
-	SharedKey          string `json:"shared_key"`
-	SecretKey          string `json:"secret_key"`
-	Region             string `json:"region"`
-	Environment        string `json:"environment"`
-	ServicePrivateKey  string `json:"service_private_key"`
-	ServiceIdentity    string `json:"service_identity"`
-	MTLSHeader         string `json:"mtls_header"`
-	SerialHeader       string `json:"serial_header"`
-	GetDeviceEndpoint  string `json:"get_device_endpoint"`
-	DebugLog           string `json:"debug_log"`
-	verifier           *signer.Signer
-	serviceClient      *iam.Client
-	err                error
-	initialized        bool
-	cache              *cache.Cache
-	mu                 sync.Mutex
-	doOnce             sync.Once
+	SharedKey         string `json:"shared_key"`
+	SecretKey         string `json:"secret_key"`
+	Region            string `json:"region"`
+	Environment       string `json:"environment"`
+	ServicePrivateKey string `json:"service_private_key"`
+	ServiceIdentity   string `json:"service_identity"`
+	MTLSHeader        string `json:"mtls_header"`
+	SerialHeader      string `json:"serial_header"`
+	GetDeviceEndpoint string `json:"get_device_endpoint"`
+	DeviceTokenURL    string `json:"device_token_url"`
+	DebugLog          string `json:"debug_log"`
+	verifier          *signer.Signer
+	serviceClient     *iam.Client
+	err               error
+	initialized       bool
+	cache             *cache.Cache
+	mu                sync.Mutex
+	doOnce            sync.Once
 }
 
 type GetResponse struct {
@@ -59,6 +60,15 @@ type Association struct {
 	Name         string `json:"name"`
 	SerialNumber string `json:"serialNumber"`
 	ModelNumber  string `json:"modelNumber"`
+}
+
+type tokenResponse struct {
+	Scope        string `json:"scope"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int64  `json:"expires_in"`
+	TokenType    string `json:"token_type"`
+	IDToken      string `json:"id_token"`
 }
 
 const (
@@ -218,31 +228,31 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 	}
 	device := getResponse.Entry[0]
 
-	deviceClient, err := iam.NewClient(nil, &iam.Config{
-		OAuth2ClientID: device.ClientID,
-		OAuth2Secret:   device.ClientSecret,
-		Region:         conf.Region,
-		Environment:    conf.Environment,
-		DebugLog:       conf.DebugLog,
+	tokenClient := resty.New()
+	rt := tokenClient.R()
+	rt = rt.SetBasicAuth(device.ClientID, device.ClientSecret)
+	rt = rt.SetHeader("API-Version", "1")
+	rt = rt.SetHeader("Accept", "application/json")
+	rt = rt.SetHeader("Accept-Language", "en-US")
+	rt = rt.SetHeader("Content-Type", "application/json")
+	rt = rt.SetFormData(map[string]string{
+		"grant_type": "password",
+		"username":   device.LoginID,
+		"password":   device.Password,
 	})
-	if err != nil {
-		return nil, fmt.Errorf("error creating IAM client: %w", err)
-	}
+	resp, _ = rt.Execute(http.MethodPost, conf.DeviceTokenURL)
 
-	// Fetch accessToken
-	if err := deviceClient.Login(device.LoginID, device.Password); err != nil {
-		return nil, fmt.Errorf("error logging in using device credentials: %w", err)
-	}
-	expiresAt := time.Unix(deviceClient.Expires(), 0).UTC()
-	token, err = deviceClient.Token()
+	var tr tokenResponse
+	err = json.NewDecoder(bytes.NewReader(resp.Body())).Decode(&tr)
 	if err != nil {
-		return nil, fmt.Errorf("token error: %w", err)
+		return nil, err
 	}
+	expiresAt := time.Unix(time.Now().Unix()+tr.ExpiresIn, 0).UTC()
 	return &mapperResponse{
-		AccessToken:  token,
-		RefreshToken: deviceClient.RefreshToken(),
+		AccessToken:  tr.AccessToken,
+		RefreshToken: tr.RefreshToken,
 		ExpiresAt:    expiresAt,
-		ExpiresIn:    int(expiresAt.Sub(time.Now().UTC())),
+		ExpiresIn:    tr.ExpiresIn,
 	}, nil
 }
 
