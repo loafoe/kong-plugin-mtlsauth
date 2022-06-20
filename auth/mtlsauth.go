@@ -62,6 +62,12 @@ type Association struct {
 	ModelNumber  string `json:"modelNumber"`
 }
 
+type tokenRequest struct {
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+	GrantType string `json:"grant_type"`
+}
+
 type tokenResponse struct {
 	Scope        string `json:"scope"`
 	AccessToken  string `json:"access_token"`
@@ -234,10 +240,10 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 	rt = rt.SetHeader("Accept", "application/json")
 	rt = rt.SetHeader("Accept-Language", "en-US")
 	rt = rt.SetHeader("Content-Type", "application/json")
-	rt = rt.SetFormData(map[string]string{
-		"grant_type": "password",
-		"username":   device.LoginID,
-		"password":   device.Password,
+	rt = rt.SetBody(tokenRequest{
+		Username:  device.LoginID,
+		Password:  device.Password,
+		GrantType: "password",
 	})
 	resp, err = rt.Execute(http.MethodPost, conf.DeviceTokenURL)
 	if err != nil {
