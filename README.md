@@ -15,8 +15,6 @@ plugins:
        device_token_url: https://dev-auth-services.smartsuite-cataract.com//authorize/oauth2/token
        service_identity: aaa@bbb.com
        service_private_key: .....
-       oauth2_client_id: connectClient
-       oauth2_client_secret: s3cretpW
        region: us-east
        environment: client-test
        
@@ -24,11 +22,15 @@ plugins:
 
 ## fields
 
-* `config.shared_key` - (Required) The shared key to look for
-* `config.secret_key` - (Required) The secret key used for signature generation
+* `config.shared_key` - (Required) The shared key to use for signature validation
+* `config.secret_key` - (Required) The secret key used for signature validation
 * `config.mtls_header` - (Required) The HTTP header containing the mTLS certificate info
-* `config.serial_header` - (Required) The HTTP header containing the device serial
-
+* `config.get_device_url` - (Required) The GET device registration (DRS) URL API endpoint
+* `config.device_token_url` - (Required) The POST endpoint for token auth
+* `config.service_identity` - (Required) The service ID to use for authenticating to the DRS
+* `config.service_private_key` - (Required) The service private key to use for authenticating to the DRS
+* `config.region` - (Required) The IAM region we are in (`us-east`, `eu-west`, etc..)
+* `config.environment` - (Required) The IAM environment to use (`client-test` or `prod`)
 ## license
 
 License is proprietary
