@@ -104,7 +104,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 				DebugLog:    conf.DebugLog,
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("error creating serviceClient: %w", err)
 			}
 			conf.serviceClient = serviceClient
 			// TODO: add a redo here to handle transient errors
@@ -211,7 +211,7 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 	client := resty.New()
 	token, err := conf.serviceClient.Token()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("serviceClient token error: %w", err)
 	}
 	r := client.R()
 	r = r.SetHeader("Authorization", "Bearer "+token)
@@ -226,7 +226,7 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 	var getResponse GetResponse
 	err = json.NewDecoder(bytes.NewReader(resp.Body())).Decode(&getResponse)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error decoding getDevice response: %w", err)
 	}
 	if len(getResponse.Entry) < 1 {
 		return nil, fmt.Errorf("no results found for CN: %s", cn)
@@ -255,7 +255,6 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error decoding token response: %w", err)
 	}
-	// TODO: hardcoded expiresIn value
 	expiresAt := time.Unix(time.Now().Unix()+tr.ExpiresIn, 0).UTC()
 	return &mapperResponse{
 		AccessToken:  tr.AccessToken,
