@@ -256,12 +256,12 @@ func (conf *Config) mapMTLS(cn string) (*mapperResponse, error) {
 		return nil, fmt.Errorf("error decoding token response: %w", err)
 	}
 	// TODO: hardcoded expiresIn value
-	expiresAt := time.Unix(time.Now().Unix()+1799, 0).UTC()
+	expiresAt := time.Unix(time.Now().Unix()+tr.ExpiresIn, 0).UTC()
 	return &mapperResponse{
 		AccessToken:  tr.AccessToken,
 		RefreshToken: tr.RefreshToken,
 		ExpiresAt:    expiresAt,
-		ExpiresIn:    1799,
+		ExpiresIn:    tr.ExpiresIn,
 	}, nil
 }
 
