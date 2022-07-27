@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -29,7 +30,6 @@ type Config struct {
 	SerialHeader      string `json:"serial_header"`
 	GetDeviceEndpoint string `json:"get_device_endpoint"`
 	DeviceTokenURL    string `json:"device_token_url"`
-	DebugLog          string `json:"debug_log"`
 	verifier          *signer.Signer
 	serviceClient     *iam.Client
 	err               error
@@ -101,7 +101,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 			serviceClient, err := iam.NewClient(nil, &iam.Config{
 				Region:      conf.Region,
 				Environment: conf.Environment,
-				DebugLog:    conf.DebugLog,
+				DebugLog:    os.Getenv("MTLSAUTH_DEBUG_LOG"),
 			})
 			if err != nil {
 				return fmt.Errorf("error creating serviceClient: %w", err)
