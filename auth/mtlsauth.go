@@ -24,8 +24,6 @@ type Config struct {
 	SecretKey         string `json:"secret_key"`
 	Region            string `json:"region"`
 	Environment       string `json:"environment"`
-	ServicePrivateKey string `json:"service_private_key"`
-	ServiceIdentity   string `json:"service_identity"`
 	MTLSHeader        string `json:"mtls_header"`
 	SerialHeader      string `json:"serial_header"`
 	GetDeviceEndpoint string `json:"get_device_endpoint"`
@@ -88,6 +86,7 @@ func New() interface{} {
 
 // Access implements the Access step
 func (conf *Config) Access(kong *pdk.PDK) {
+	var serviceId string
 	if !conf.initialized {
 		conf.mu.Lock()
 		initFunc := func() error {
@@ -98,6 +97,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 			conf.verifier = verifier
 			conf.cache = cache.New(30*time.Minute, 30*time.Minute)
 
+			serviceId = os.Getenv("MTLSAUTH_SERVICE_ID")
 			serviceClient, err := iam.NewClient(nil, &iam.Config{
 				Region:      conf.Region,
 				Environment: conf.Environment,
@@ -109,8 +109,8 @@ func (conf *Config) Access(kong *pdk.PDK) {
 			conf.serviceClient = serviceClient
 			// TODO: add a redo here to handle transient errors
 			err = conf.serviceClient.ServiceLogin(iam.Service{
-				PrivateKey: conf.ServicePrivateKey,
-				ServiceID:  conf.ServiceIdentity,
+				PrivateKey: os.Getenv("MTLSAUTH_SERVICE_PRIVATE_KEY"),
+				ServiceID:  serviceId,
 			})
 			return err
 		}
@@ -120,7 +120,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		conf.initialized = true
 		conf.mu.Unlock()
 	}
-	_ = kong.ServiceRequest.SetHeader("X-Service-ID", conf.ServiceIdentity)
+	_ = kong.ServiceRequest.SetHeader("X-Service-ID", serviceId)
 
 	if conf.err != nil {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("init failed: %v", conf.err))

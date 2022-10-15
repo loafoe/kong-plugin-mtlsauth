@@ -19,6 +19,15 @@ plugins:
        environment: client-test
        
 ```
+## credentials
+
+The plugin reads credentials from the environment
+
+| Field                          | Description                      |
+|--------------------------------|----------------------------------|
+| `MTLSAUTH_SERVICE_ID`          | The service identity             |
+| `MTLSAUTH_SERVICE_PRIVATE_KEY` | The service identity private key |
+
 
 ## fields
 
@@ -27,8 +36,6 @@ plugins:
 * `config.mtls_header` - (Required) The HTTP header containing the mTLS certificate info
 * `config.get_device_url` - (Required) The GET device registration (DRS) URL API endpoint
 * `config.device_token_url` - (Required) The POST endpoint for token auth
-* `config.service_identity` - (Required) The service ID to use for authenticating to the DRS
-* `config.service_private_key` - (Required) The service private key to use for authenticating to the DRS
 * `config.region` - (Required) The IAM region we are in (`us-east`, `eu-west`, etc..)
 * `config.environment` - (Required) The IAM environment to use (`client-test` or `prod`)
 ## license
