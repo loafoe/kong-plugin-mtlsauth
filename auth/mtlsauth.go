@@ -125,7 +125,10 @@ func (conf *Config) Access(kong *pdk.PDK) {
 				PrivateKey: os.Getenv("MTLSAUTH_SERVICE_PRIVATE_KEY"),
 				ServiceID:  serviceId,
 			})
-			return err
+			if err != nil {
+				return fmt.Errorf("error logging in: service_id=%s error=%w", serviceId, err)
+			}
+			return nil
 		}
 		conf.doOnce.Do(func() {
 			conf.err = initFunc()
