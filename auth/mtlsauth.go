@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -35,6 +36,8 @@ type Config struct {
 	cache             *cache.Cache
 	mu                sync.Mutex
 	doOnce            sync.Once
+	revision          string
+	settings          []debug.BuildSetting
 }
 
 type GetResponse struct {
@@ -97,6 +100,16 @@ func (conf *Config) Access(kong *pdk.PDK) {
 			conf.verifier = verifier
 			conf.cache = cache.New(30*time.Minute, 30*time.Minute)
 
+			info, ok := debug.ReadBuildInfo()
+			if ok {
+				conf.settings = info.Settings
+				for _, kv := range info.Settings {
+					if kv.Key == "vcs.revision" {
+						conf.revision = kv.Value
+					}
+				}
+			}
+
 			serviceId = os.Getenv("MTLSAUTH_SERVICE_ID")
 			serviceClient, err := iam.NewClient(nil, &iam.Config{
 				Region:      conf.Region,
@@ -121,6 +134,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		conf.mu.Unlock()
 	}
 	_ = kong.ServiceRequest.SetHeader("X-Service-ID", serviceId)
+	_ = kong.ServiceRequest.SetHeader("X-Plugin-Revision", conf.revision)
 
 	if conf.err != nil {
 		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", fmt.Sprintf("init failed: %v", conf.err))
