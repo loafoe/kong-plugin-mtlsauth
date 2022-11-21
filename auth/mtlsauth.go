@@ -21,8 +21,6 @@ import (
 
 // Config holds the configuration of the plugin
 type Config struct {
-	SharedKey         string `json:"shared_key"`
-	SecretKey         string `json:"secret_key"`
 	Region            string `json:"region"`
 	Environment       string `json:"environment"`
 	MTLSHeader        string `json:"mtls_header"`
@@ -39,6 +37,8 @@ type Config struct {
 	revision          string
 	settings          []debug.BuildSetting
 	serviceId         string
+	sharedKey         string
+	secretKey         string
 }
 
 type GetResponse struct {
@@ -93,7 +93,10 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	if !conf.initialized {
 		conf.mu.Lock()
 		initFunc := func() error {
-			verifier, err := signer.New(conf.SharedKey, conf.SecretKey)
+			conf.sharedKey = os.Getenv("MTLSAUTH_SHARED_KEY")
+			conf.secretKey = os.Getenv("MTLSAUTH_SECRET_KEY")
+
+			verifier, err := signer.New(conf.sharedKey, conf.secretKey)
 			if err != nil {
 				return err
 			}
@@ -145,7 +148,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	}
 	// Signature validation
 	if err := conf.validateSignature(kong.Request); err != nil {
-		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "validation failed")
+		_ = kong.ServiceRequest.SetHeader("X-Plugin-Error", "signature validation failed")
 		return
 	}
 	// Authorization
