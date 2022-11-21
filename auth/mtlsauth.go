@@ -38,6 +38,7 @@ type Config struct {
 	doOnce            sync.Once
 	revision          string
 	settings          []debug.BuildSetting
+	serviceId         string
 }
 
 type GetResponse struct {
@@ -89,7 +90,6 @@ func New() interface{} {
 
 // Access implements the Access step
 func (conf *Config) Access(kong *pdk.PDK) {
-	var serviceId string
 	if !conf.initialized {
 		conf.mu.Lock()
 		initFunc := func() error {
@@ -110,7 +110,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 				}
 			}
 
-			serviceId = os.Getenv("MTLSAUTH_SERVICE_ID")
+			conf.serviceId = os.Getenv("MTLSAUTH_SERVICE_ID")
 			serviceClient, err := iam.NewClient(nil, &iam.Config{
 				Region:      conf.Region,
 				Environment: conf.Environment,
@@ -123,10 +123,10 @@ func (conf *Config) Access(kong *pdk.PDK) {
 			// TODO: add a redo here to handle transient errors
 			err = conf.serviceClient.ServiceLogin(iam.Service{
 				PrivateKey: os.Getenv("MTLSAUTH_SERVICE_PRIVATE_KEY"),
-				ServiceID:  serviceId,
+				ServiceID:  conf.serviceId,
 			})
 			if err != nil {
-				return fmt.Errorf("error logging in: service_id=%s error=%w", serviceId, err)
+				return fmt.Errorf("error logging in: service_id=%s error=%w", conf.serviceId, err)
 			}
 			return nil
 		}
@@ -136,7 +136,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 		conf.initialized = true
 		conf.mu.Unlock()
 	}
-	_ = kong.ServiceRequest.SetHeader("X-Service-ID", serviceId)
+	_ = kong.ServiceRequest.SetHeader("X-Service-ID", conf.serviceId)
 	_ = kong.ServiceRequest.SetHeader("X-Plugin-Revision", conf.revision)
 
 	if conf.err != nil {
