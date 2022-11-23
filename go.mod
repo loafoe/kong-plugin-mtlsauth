@@ -5,14 +5,14 @@ go 1.19
 require (
 	github.com/Kong/go-pdk v0.8.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/philips-software/go-hsdp-api v0.75.6
+	github.com/philips-software/go-hsdp-api v0.76.0
 	github.com/philips-software/go-hsdp-signer v1.4.0
 	github.com/stretchr/testify v1.8.1
 	gopkg.in/resty.v1 v1.12.0
 )
 
 require (
-	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
+	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
