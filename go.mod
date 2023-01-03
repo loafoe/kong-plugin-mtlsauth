@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/Kong/go-pdk v0.8.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/philips-software/go-hsdp-api v0.76.1
+	github.com/philips-software/go-hsdp-api v0.77.2
 	github.com/philips-software/go-hsdp-signer v1.4.0
 	github.com/stretchr/testify v1.8.1
 	gopkg.in/resty.v1 v1.12.0
