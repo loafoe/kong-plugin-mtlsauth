@@ -112,13 +112,15 @@ func (conf *Config) Access(kong *pdk.PDK) {
 					}
 				}
 			}
-
-			conf.serviceId = os.Getenv("MTLSAUTH_SERVICE_ID")
-			serviceClient, err := iam.NewClient(nil, &iam.Config{
+			cfg := &iam.Config{
 				Region:      conf.Region,
 				Environment: conf.Environment,
-				DebugLog:    os.Getenv("MTLSAUTH_DEBUG_LOG"),
-			})
+			}
+			if debugLog := os.Getenv("MTLSAUTH_DEBUG_LOG"); debugLog != "" {
+				cfg.DebugLog = os.Stderr
+			}
+			conf.serviceId = os.Getenv("MTLSAUTH_SERVICE_ID")
+			serviceClient, err := iam.NewClient(nil, cfg)
 			if err != nil {
 				return fmt.Errorf("error creating serviceClient: %w", err)
 			}
