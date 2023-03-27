@@ -10,7 +10,7 @@ COPY . .
 RUN go build -o /build/mtlsauth .
 
 
-FROM kong:3.1.1-alpine
+FROM kong:3.2.2-alpine
 USER root
 COPY --from=builder /build/mtlsauth /usr/local/bin
 USER kong
