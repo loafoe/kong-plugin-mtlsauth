@@ -114,7 +114,7 @@ func (conf *Config) Access(kong *pdk.PDK) {
 			ctx := context.Background()
 			vaultAddr := os.Getenv("MTLSAUTH_VAULT_ADDR")
 			roleId := os.Getenv("MTLSAUTH_VAULT_ROLE_ID")
-			secretId := os.Getenv("MTLSAUTH_VAULT_APP_SECRET_ID")
+			secretId := os.Getenv("MTLSAUTH_VAULT_SECRET_ID")
 			vaultPath := os.Getenv("MTLSAUTH_VAULT_PATH")
 
 			// prepare a client with the given base address
