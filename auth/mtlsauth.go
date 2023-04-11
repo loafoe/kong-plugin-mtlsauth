@@ -2,8 +2,11 @@ package auth
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/vault-client-go"
+	"github.com/hashicorp/vault-client-go/schema"
 	"net/http"
 	"os"
 	"runtime/debug"
@@ -88,13 +91,62 @@ func New() interface{} {
 	return &Config{}
 }
 
+type Data struct {
+	ServerCert               string            `json:"server_cert"`
+	ServerKey                string            `json:"server_key"`
+	ServiceSSHPrivateKey     string            `json:"server_ssh_private_key"`
+	TrustedCACert            string            `json:"trusted_ca_cert"`
+	EnableGlobalRateLimiting bool              `json:"enable_global_rate_limiting"`
+	HSPLogdrainURL           string            `json:"hsp_logdrain_url"`
+	CaddyServerUsername      string            `json:"caddy_server_username"`
+	CaddyServiceBastionHost  string            `json:"caddy_server_bastion_host"`
+	CaddyServerPrivateHosts  []string          `json:"caddy_server_private_hosts"`
+	EndpointMappings         map[string]string `json:"endpoint_mappings"`
+	MTLSAuthSharedKey        string            `json:"mtlsauth_shared_key"`
+	MTLSAuthSecretKey        string            `json:"mtlsauth_secret_key"`
+}
+
 // Access implements the Access step
 func (conf *Config) Access(kong *pdk.PDK) {
 	if !conf.initialized {
 		conf.mu.Lock()
 		initFunc := func() error {
-			conf.sharedKey = os.Getenv("MTLSAUTH_SHARED_KEY")
-			conf.secretKey = os.Getenv("MTLSAUTH_SECRET_KEY")
+			ctx := context.Background()
+			vaultAddr := os.Getenv("MTLSAUTH_VAULT_ADDR")
+			roleId := os.Getenv("MTLSAUTH_VAULT_ROLE_ID")
+			secretId := os.Getenv("MTLSAUTH_VAULT_APP_SECRET_ID")
+			vaultPath := os.Getenv("MTLSAUTH_VAULT_PATH")
+
+			// prepare a client with the given base address
+			client, err := vault.New(
+				vault.WithAddress(vaultAddr),
+				vault.WithRequestTimeout(30*time.Second),
+			)
+			if err != nil {
+				return fmt.Errorf("error creating vault client: %w", err)
+			}
+			resp, err := client.Auth.AppRoleLogin(
+				ctx,
+				schema.AppRoleLoginRequest{
+					RoleId:   roleId,
+					SecretId: secretId,
+				},
+			)
+			if err != nil {
+				return fmt.Errorf("error logging into vault: %w", err)
+			}
+
+			if err := client.SetToken(resp.Auth.ClientToken); err != nil {
+				return fmt.Errorf("error setting vault token: %w", err)
+			}
+
+			data, err := client.Read(ctx, vaultPath)
+			if err != nil {
+				return fmt.Errorf("error reading vault key %s data: %w", vaultPath, err)
+			}
+
+			conf.sharedKey = data.Data["mtlsauth_shared_key"].(string)
+			conf.secretKey = data.Data["mtlsauth_secret_key"].(string)
 
 			verifier, err := signer.New(conf.sharedKey, conf.secretKey)
 			if err != nil {

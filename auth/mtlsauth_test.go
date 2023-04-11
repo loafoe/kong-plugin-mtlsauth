@@ -23,5 +23,5 @@ func TestPlugin(t *testing.T) {
 	}
 	env.DoHttps(config)
 	assert.Equal(t, 200, env.ClientRes.Status)
-	assert.Equal(t, "init failed: missing shared key", env.ClientRes.Headers.Get("X-Plugin-Error"))
+	assert.Equal(t, `init failed: error logging into vault: Post "/v1/auth/approle/login": unsupported protocol scheme ""`, env.ClientRes.Headers.Get("X-Plugin-Error"))
 }
