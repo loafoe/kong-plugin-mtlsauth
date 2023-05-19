@@ -6,7 +6,7 @@ require (
 	github.com/Kong/go-pdk v0.8.0
 	github.com/hashicorp/vault-client-go v0.3.2
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/philips-software/go-hsdp-api v0.80.1
+	github.com/philips-software/go-hsdp-api v0.81.0
 	github.com/philips-software/go-hsdp-signer v1.4.0
 	github.com/stretchr/testify v1.8.2
 	gopkg.in/resty.v1 v1.12.0
@@ -34,7 +34,7 @@ require (
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	golang.org/x/crypto v0.8.0 // indirect
 	golang.org/x/exp v0.0.0-20220921164117-439092de6870 // indirect
-	golang.org/x/net v0.9.0 // indirect
+	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/time v0.0.0-20220922220347-f3bd1da661af // indirect
