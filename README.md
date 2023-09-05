@@ -45,4 +45,4 @@ The following attributes are expected in the Vault data object
 * `config.environment` - (Required) The IAM environment to use (`client-test` or `prod`)
 ## license
 
-License is proprietary
+License is MIT
