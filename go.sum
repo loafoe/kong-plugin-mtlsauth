@@ -47,8 +47,8 @@ github.com/mitchellh/go-homedir v1.1.0 h1:lukF9ziXFxDFPkA1vsr5zpc1XuPDn/wFntq5mG
 github.com/mitchellh/go-homedir v1.1.0/go.mod h1:SfyaCUpYCn1Vlf4IUYiD9fPX4A5wJrkLzIz1N1q0pr0=
 github.com/patrickmn/go-cache v2.1.0+incompatible h1:HRMgzkcYKYpi3C8ajMPV8OFXaaRUnok+kx1WdO15EQc=
 github.com/patrickmn/go-cache v2.1.0+incompatible/go.mod h1:3Qf8kWWT7OJRJbdiICTKqZju1ZixQ/KpMGzzAfe6+WQ=
-github.com/philips-software/go-hsdp-api v0.82.1 h1:MnNHF9Ah1y408iptfHvfi5eM9HQvn5wxkMBMusooO08=
-github.com/philips-software/go-hsdp-api v0.82.1/go.mod h1:JbSWbEfQVB7Ei8wov4C2zPO5N1+Wr9bha4urcfxddw4=
+github.com/philips-software/go-hsdp-api v0.82.4 h1:lYIc9OT8Ua9g7vubamClh7WEsMU57ohcAm6nzkAeOp0=
+github.com/philips-software/go-hsdp-api v0.82.4/go.mod h1:JbSWbEfQVB7Ei8wov4C2zPO5N1+Wr9bha4urcfxddw4=
 github.com/philips-software/go-hsdp-signer v1.4.0 h1:yg7UILhmI4xJhr/tQiAiQwJL0EZFvLuMqpH2GZ9ygY4=
 github.com/philips-software/go-hsdp-signer v1.4.0/go.mod h1:/QehZ/+Aks2t1TFpjhF/7ZSB8PJIIJHzLc03rOqwLw0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
