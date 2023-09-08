@@ -1,5 +1,5 @@
-github.com/Kong/go-pdk v0.8.0 h1:5HvFuADux2KUOxoEEESie0s1wlFJdNzTl3IQ+UKokyo=
-github.com/Kong/go-pdk v0.8.0/go.mod h1:D6tpamZZ1hZp3PEksGCbvlS+g0J2RhGTw7eZW3D7v5I=
+github.com/Kong/go-pdk v0.10.0 h1:hm+xWDWPQeevfvOzkf4OxGf9OgT/wGh87Blq3JF9SEU=
+github.com/Kong/go-pdk v0.10.0/go.mod h1:RpQobOb9he/PUPisKnjy4EM/xJ6o69BFOgBMrxu3gZ4=
 github.com/cenkalti/backoff/v4 v4.2.1 h1:y4OZtCnogmCPw98Zjyt5a6+QwPLGkiQsYW5oUqylYbM=
 github.com/cenkalti/backoff/v4 v4.2.1/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyYozVcomhLiZE=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

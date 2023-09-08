@@ -3,7 +3,7 @@ module github.com/loafoe/kong-plugin-mtlsauth
 go 1.19
 
 require (
-	github.com/Kong/go-pdk v0.8.0
+	github.com/Kong/go-pdk v0.10.0
 	github.com/hashicorp/vault-client-go v0.3.3
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/philips-software/go-hsdp-api v0.82.1
