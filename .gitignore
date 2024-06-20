@@ -5,4 +5,6 @@ manifest.yml
 redshift.json
 *.csv
 *.env
+.secrets
+.env
 kong-plugin-mtlsauth
