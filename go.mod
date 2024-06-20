@@ -3,7 +3,7 @@ module github.com/loafoe/kong-plugin-mtlsauth
 go 1.19
 
 require (
-	github.com/Kong/go-pdk v0.10.0
+	github.com/Kong/go-pdk v0.11.0
 	github.com/hashicorp/vault-client-go v0.3.3
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/philips-software/go-hsdp-api v0.85.0
@@ -33,7 +33,7 @@ require (
 	github.com/philips-software/go-nih-signer v1.5.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
-	github.com/ugorji/go/codec v1.2.11 // indirect
+	github.com/ugorji/go/codec v1.2.12 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/exp v0.0.0-20220921164117-439092de6870 // indirect
 	golang.org/x/net v0.23.0 // indirect
