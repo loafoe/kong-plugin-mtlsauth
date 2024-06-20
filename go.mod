@@ -1,6 +1,6 @@
 module github.com/loafoe/kong-plugin-mtlsauth
 
-go 1.19
+go 1.22
 
 require (
 	github.com/Kong/go-pdk v0.11.0
