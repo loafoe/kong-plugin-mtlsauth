@@ -8,7 +8,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/philips-software/go-hsdp-api v0.83.2
 	github.com/philips-software/go-hsdp-signer v1.4.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	gopkg.in/resty.v1 v1.12.0
 )
 
