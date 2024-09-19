@@ -227,9 +227,11 @@ func (conf *Config) Access(kong *pdk.PDK) {
 	}
 
 	// Extract CN
-	mtlsFields := strings.Split(mtlsData[0], ",")
 	var cn string
+	cn = mtlsData[0] // Format: 624e1a69-c12e-43d8-b53f-be21b8a50408_DevOps_1
+	mtlsFields := strings.Split(mtlsData[0], ",")
 	for _, field := range mtlsFields {
+		// Format: CN=624e1a69-c12e-43d8-b53f-be21b8a50408_DevOps_1,OU=Scientia+OU=15000001,O=Alcon Research LLC,C=US
 		if found, _ := fmt.Sscanf(field, "CN=%s", &cn); found == 1 {
 			break
 		}
